@@ -1,0 +1,42 @@
+#!/bin/bash
+
+TARGET_DBNAME=""
+BACKUP_DBPATH=""
+DB_USER=""
+
+help_text="help: db-copy -h
+
+Create a copy of the database for loading a new site
+
+How to use: db-copy -d {TARGET_DBNAME} -f {BACKUP_DBPATH} -u {DB_USER}
+
+End of help command"
+
+while getopts ':h:d:f:u:' option; do
+  case "$option" in
+    h) echo "$help_text"
+       exit
+       ;;
+    d) TARGET_DBNAME="$OPTARG"
+       ;;
+    f) BACKUP_DBPATH="$OPTARG"
+       ;;
+    u) DB_USER="$OPTARG"
+       ;;
+    :) printf "missing argument for -%s\n" "$OPTARG" >&2
+       echo "$help_text" >&2
+       exit 1
+       ;;
+   \?) printf "illegal option: -%s\n" "$OPTARG" >&2
+       echo "$help_text" >&2
+       exit 1
+       ;;
+  esac
+done
+
+echo "Creating database $TARGET_DBNAME if doesn't exist"
+command="CREATE DATABASE IF NOT EXISTS $TARGET_DBNAME;"
+mysql -u "$DB_USER" -p --execute="$command"
+
+echo "Taking backup of database using file $BACKUP_DBPATH"
+pv BACKUP_DBPATH | mysql -u "$DB_USER" -p "$TARGET_DBNAME"
