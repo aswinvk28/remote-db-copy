@@ -6,13 +6,14 @@ DB_USER=""
 
 help_text="help: db-copy -h
 
-Create a copy of the database for loading a new site
+Create a copy of the database for loading a new site. It will drop the current copy and create a new copy. You do not have to 
+provide the source database name as the backup file will be having it.
 
-How to use: db-copy -d {TARGET_DBNAME} -f {BACKUP_DBPATH} -u {DB_USER}
+How to use: db-copy -d {TARGET_DBNAME} -c {CURRENT_DBNAME_COPY} -f {BACKUP_DBPATH}
 
 End of help command"
 
-while getopts ':h:d:f:u:' option; do
+while getopts ':h:d:f:s:' option; do
   case "$option" in
     h) echo "$help_text"
        exit
@@ -21,7 +22,7 @@ while getopts ':h:d:f:u:' option; do
        ;;
     f) BACKUP_DBPATH="$OPTARG"
        ;;
-    u) DB_USER="$OPTARG"
+    c) CURRENT_DBNAME_COPY="$OPTARG"
        ;;
     :) printf "missing argument for -%s\n" "$OPTARG" >&2
        echo "$help_text" >&2
@@ -34,9 +35,12 @@ while getopts ':h:d:f:u:' option; do
   esac
 done
 
+echo "Dropping the database $CURRENT_DBNAME_COPY"
+drop_command="DROP DATABASE IF EXISTS $CURRENT_DBNAME_COPY;"
+
 echo "Creating database $TARGET_DBNAME if doesn't exist"
 command="CREATE DATABASE IF NOT EXISTS $TARGET_DBNAME;"
-mysql -u "$DB_USER" -p --execute="$command"
+mysql --execute="$drop_command$command"
 
 echo "Taking backup of database using file $BACKUP_DBPATH"
-pv BACKUP_DBPATH | mysql -u "$DB_USER" -p "$TARGET_DBNAME"
+pv $BACKUP_DBPATH | mysql "$TARGET_DBNAME" --defaults-extra-file=./mysql-config.cnf
